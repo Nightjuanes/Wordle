@@ -14,39 +14,43 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.wordle.data.CharResult
 import com.example.wordle.ui.viewmodel.CharState
 import com.example.wordle.ui.viewmodel.WordleGame
 
 @Composable
-fun WordleGameScreen() {
+fun WordleGameScreen(navController: NavController) {
     var inputWord by remember { mutableStateOf("") }
-    val game = remember { WordleGame(wordToGuess = "LACAL") }
+    val game = remember { WordleGame(wordToGuess = "") }
     var errorMessage by remember { mutableStateOf("") }
 
     WordleGameView(
-        inputWord = inputWord.uppercase() ,
+        inputWord = inputWord.lowercase(),
         onWordChanged = { inputWord = it },
         onSubmitWord = {
-            if (inputWord.length == 5) {
+            if (inputWord.length == 6) {
                 game.submitWord(inputWord)
                 inputWord = ""
                 errorMessage = ""
             } else {
-                errorMessage = "La palabra debe tener 5 caracteres."
+                errorMessage = "La palabra debe tener 6 caracteres."
             }
         },
         attempts = game.attempts,
         isGameOver = game.isGameOver,
         wordToGuess = game.wordToGuess,
         errorMessage = errorMessage,
-        restartGame =  {
+        puntaje = game.puntaje(),
+        restartGame = {
             game.resetGame()
             inputWord = ""
             errorMessage = ""
-        }
+        },
+        navController = navController
     )
 }
+
 @Composable
 fun WordleGameView(
     inputWord: String,
@@ -56,7 +60,9 @@ fun WordleGameView(
     isGameOver: Boolean,
     wordToGuess: String,
     errorMessage: String,
-    restartGame: () -> Unit
+    puntaje: Int,
+    restartGame: () -> Unit,
+    navController: NavController // Añadimos NavController
 ) {
     Column(
         modifier = Modifier
@@ -65,7 +71,7 @@ fun WordleGameView(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Mostrar la tabla de palabras ingresadas con feedback en el centro
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -77,7 +83,7 @@ fun WordleGameView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = "Wordle en Android")
+        Text(text = "Wordle")
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -105,22 +111,33 @@ fun WordleGameView(
         ) {
             Text("Enviar intento")
         }
-        Button( onClick = {restartGame}){
-            Text("Reiniciar")
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         if (isGameOver) {
             val message = if (attempts.lastOrNull()?.all { it.state == CharState.CORRECT } == true) {
-                "¡Felicidades! Adivinaste la palabra."
+                "¡Felicidades! Adivinaste la palabra. tu puntaje fue $puntaje"
             } else {
                 "Juego Terminado. La palabra era: $wordToGuess"
             }
             Text(text = message)
         }
+
+
+
+        Text(text = "Historial de Intentos", fontSize = 20.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        WordlehistoryList(history = attempts)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = { navController.navigate("historial_screen") }) {
+            Text("Ver Historial Completo")
+        }
     }
 }
+
 
 @Composable
 fun WordleAttemptsList(attempts: List<List<CharResult>>) {
@@ -157,4 +174,38 @@ fun WordleAttemptsList(attempts: List<List<CharResult>>) {
     }
 }
 
+@Composable
+fun WordlehistoryList(history: List<List<CharResult>>) {
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        items(history) { attempt ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                attempt.forEach { charResult ->
+                    val color = when (charResult.state) {
+                        CharState.CORRECT -> Color.Green
+                        CharState.PRESENT -> Color.Yellow
+                        CharState.ABSENT -> Color.Gray
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .border(2.dp, Color.Black)
+                            .background(color),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = charResult.char.toString(), fontSize = 24.sp)
+                    }
+                }
+            }
+        }
+    }
+}
 
